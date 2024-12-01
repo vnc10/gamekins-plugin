@@ -27,6 +27,7 @@ import org.gamekins.event.EventHandler
 import org.gamekins.event.user.ChallengeGeneratedEvent
 import org.gamekins.file.FileDetails
 import org.gamekins.file.SourceFileDetails
+import org.gamekins.file.TestFileDetails
 import org.gamekins.util.*
 import org.gamekins.util.Constants.AND_TYPE
 import org.gamekins.util.Constants.Parameters
@@ -163,7 +164,7 @@ object ChallengeFactory {
             }
             count++
 
-            val challengeClass = chooseChallengeType()
+            val challengeClass = TestParameterChallenge::class.java
             val selectedFile = cla
                 ?: if (challengeClass.superclass == CoverageChallenge::class.java) {
                     val tempList = ArrayList(workList.filterIsInstance<SourceFileDetails>())
@@ -181,7 +182,16 @@ object ChallengeFactory {
                         continue
                     }
                     selectClass(tempList, initializeRankSelection(tempList))
-                } else {
+                } else if (challengeClass == TestParameterChallenge::class.java) {
+                    val testFileDetailsList = workList.filterIsInstance<TestFileDetails>()
+                    val filteredList = testFileDetailsList.filter { it.testCount > 0 }
+                    if (filteredList.isEmpty()){
+                        challenge = null
+                        continue
+                    }
+                    selectClass(filteredList, initializeRankSelection(filteredList))
+                }
+                else {
                     selectClass(workList, initializeRankSelection(workList))
                 }
 
@@ -247,6 +257,13 @@ object ChallengeFactory {
                                 + challengeClass
                     )
                     challenge = generateSmellChallenge(data, listener)
+                }
+                challengeClass == TestParameterChallenge::class.java -> {
+                    listener.logger.println(
+                        TRY_CLASS + selectedFile.fileName + AND_TYPE
+                                + challengeClass
+                    )
+                    challenge = generateParameterChallenge(data)
                 }
                 challengeClass == Challenge::class.java -> challenge = null
                 challengeClass == CoverageChallenge::class.java -> challenge = null
@@ -319,6 +336,12 @@ object ChallengeFactory {
                 BranchCoverageChallenge::class.java -> {
                     data.line = JacocoUtil.chooseRandomLine(data.selectedFile, data.parameters.workspace,
                         partially = true)
+                    if (data.line == null) null else challengeClass
+                        .getConstructor(ChallengeGenerationData::class.java)
+                        .newInstance(data)
+                }
+                ExceptionCoverageChallenge::class.java -> {
+                    data.line = JacocoUtil.chooseExceptionRandomLine(data.selectedFile, data.parameters.workspace)
                     if (data.line == null) null else challengeClass
                         .getConstructor(ChallengeGenerationData::class.java)
                         .newInstance(data)
@@ -512,5 +535,13 @@ object ChallengeFactory {
         }
 
         return selectedClass
+    }
+
+    private fun generateParameterChallenge(data: ChallengeGenerationData): TestParameterChallenge? {
+
+
+        val teste = (data.selectedFile as TestFileDetails).testCount
+
+        return null
     }
 }

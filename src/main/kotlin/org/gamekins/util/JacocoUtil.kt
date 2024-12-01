@@ -101,6 +101,16 @@ object JacocoUtil {
         return if (elements.isEmpty()) null else elements[Random.nextInt(elements.size)]
     }
 
+    @JvmStatic
+    fun chooseExceptionRandomLine(classDetails: SourceFileDetails, workspace: FilePath)
+            : Element? {
+        try {
+            return getExceptionLine(calculateCurrentFilePath(workspace, classDetails.jacocoSourceFile, classDetails.parameters.remote))
+        } catch (e: Exception) {
+            return null
+        }
+    }
+
     /**
      * Chooses a random not fully covered method of the given [classDetails]. Returns null if there are no
      * such methods.
@@ -529,4 +539,21 @@ object JacocoUtil {
      */
     class CoverageMethod(val methodName: String, val lines: Int, val missedLines: Int,
                          val firstLineID: String)
+
+    @JvmStatic
+    @Throws(IOException::class, InterruptedException::class)
+    fun getExceptionLine(jacocoSourceFile: FilePath): Element {
+        val document = Jsoup.parse(jacocoSourceFile.readToString())
+        val elements = document.select("span.pc, span.nc")
+        val exceptionElements = elements.filter { elements ->
+            val text = elements.text()
+            text.contains("throw new")
+        }
+        if (exceptionElements.isNotEmpty()) {
+            val randomIndex = Random.nextInt(exceptionElements.size)
+            return exceptionElements[randomIndex]
+        } else {
+            throw NoSuchElementException("Nenhum elemento com 'throw new' foi encontrado.")
+        }
+    }
 }

@@ -15,7 +15,7 @@
     <properties>
         <!-- Baseline Jenkins version you use to build the plugin. Users must have this version or newer to run. -->
         <jenkins.version>2.426.1</jenkins.version>
-        <kotlin.version>1.9.10</kotlin.version>
+        <kotlin.version>2.0.21</kotlin.version>
         <maven.compiler.release>17</maven.compiler.release>
         <maven.compiler.debug>true</maven.compiler.debug>
         <maven.compiler.debuglevel>lines,source</maven.compiler.debuglevel>
@@ -372,6 +372,11 @@
                 </exclusion>
             </exclusions>
         </dependency>
+        <dependency>
+            <groupId>com.github.mauricioaniche</groupId>
+            <artifactId>ck</artifactId>
+            <version>0.7.0</version>
+        </dependency>
         <!-- https://mvnrepository.com/artifact/org.sonarsource.sonarlint.core/sonarlint-core -->
         <dependency>
             <groupId>org.sonarsource.sonarlint.core</groupId>
@@ -536,7 +541,12 @@
             <id>repo.jenkins-ci.org</id>
             <url>https://repo.jenkins-ci.org/public/</url>
         </repository>
+            <repository>
+                <id>jitpack.io</id>
+                <url>https://jitpack.io</url>
+            </repository>
     </repositories>
+
     <pluginRepositories>
         <pluginRepository>
             <id>repo.jenkins-ci.org</id>

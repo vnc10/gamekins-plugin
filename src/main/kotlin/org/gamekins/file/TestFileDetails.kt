@@ -38,6 +38,7 @@ class TestFileDetails(parameters: Parameters,
     val testCount: Int
     private val testFailCount: Int
     private val testNames: HashSet<String>
+    private val codeByTest: HashMap<String, String>
 
     init {
         val files: List<FilePath> = parameters.workspace.act(
@@ -51,11 +52,13 @@ class TestFileDetails(parameters: Parameters,
             testCount = -1
             testFailCount = -1
             testNames = hashSetOf()
+            codeByTest = hashMapOf()
         } else {
             junitFile = File(files.first().remote)
             testCount = JUnitUtil.getTestCountOfSingleJUnitResult(files.first())
             testFailCount = JUnitUtil.getTestCountOfSingleJUnitResult(files.first())
             testNames = JUnitUtil.getTestNames(files.first())
+            codeByTest = JUnitUtil.getCodeFromUnitTest(parameters.workspace.remote + filePath)
         }
     }
 

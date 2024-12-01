@@ -21,6 +21,7 @@ import hudson.model.Run
 import hudson.tasks.junit.TestResultAction
 import org.jsoup.Jsoup
 import org.jsoup.parser.Parser
+import java.io.File
 
 /**
  * Util object for interaction with JUnit.
@@ -125,5 +126,48 @@ object JUnitUtil {
         val set = hashSetOf<String>()
         elements.forEach { set.add(it.attr("name")) }
         return set
+    }
+
+    fun getCodeFromUnitTest(filePath: String): HashMap<String, String> {
+
+        val file = File(filePath)
+        val testMethods = hashMapOf<String, String>()
+
+        if (!file.exists()) {
+            return hashMapOf()
+        }
+
+        val lines = file.readLines()
+        var currentMethodName = ""
+        var currentMethodCode = StringBuilder()
+
+        var insideMethod = false
+        var insideTestAnnotation = false
+
+        for (line in lines) {
+            if (line.contains("@Test")) {
+                insideTestAnnotation = true
+            }
+
+            if (insideTestAnnotation && line.contains("void")) {
+                val methodName = line.substringAfter("void").substringBefore("(").trim()
+                currentMethodName = methodName
+                currentMethodCode = StringBuilder()
+                insideMethod = true
+            }
+
+            if (insideMethod) {
+                currentMethodCode.append(line).append("\n")
+            }
+
+            if (insideMethod && line.contains("}")) {
+                testMethods[currentMethodName] = currentMethodCode.toString()
+                insideMethod = false
+                insideTestAnnotation = false
+            }
+        }
+
+        return testMethods
+
     }
 }
