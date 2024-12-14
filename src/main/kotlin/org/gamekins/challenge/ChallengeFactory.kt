@@ -16,6 +16,9 @@
 
 package org.gamekins.challenge
 
+import com.github.mauricioaniche.ck.CK
+import com.github.mauricioaniche.ck.CKClassResult
+import com.github.mauricioaniche.ck.CKNotifier
 import hudson.FilePath
 import hudson.model.Result
 import hudson.model.TaskListener
@@ -28,15 +31,23 @@ import org.gamekins.event.user.ChallengeGeneratedEvent
 import org.gamekins.file.FileDetails
 import org.gamekins.file.SourceFileDetails
 import org.gamekins.file.TestFileDetails
-import org.gamekins.util.*
+import org.gamekins.util.CKUtil
+import org.gamekins.util.CKUtil.getCKMetricsResult
+import org.gamekins.util.Constants
 import org.gamekins.util.Constants.AND_TYPE
 import org.gamekins.util.Constants.Parameters
 import org.gamekins.util.Constants.TRY_CLASS
+import org.gamekins.util.GitUtil
 import org.gamekins.util.GitUtil.HeadCommitCallable
+import org.gamekins.util.JUnitUtil
+import org.gamekins.util.JacocoUtil
+import org.gamekins.util.MutationUtil
+import org.gamekins.util.SmellUtil
+import org.jsoup.Jsoup
 import org.jsoup.nodes.Document
 import java.io.IOException
-import kotlin.collections.ArrayList
-import kotlin.jvm.Throws
+import java.net.URLDecoder
+import java.nio.charset.StandardCharsets
 import kotlin.random.Random
 
 /**
@@ -64,8 +75,10 @@ object ChallengeFactory {
     /**
      * Generates all possible challenges for a specific class in the project.
      */
-    fun generateAllPossibleChallengesForClass(selectedClass: SourceFileDetails, parameters: Parameters, user: User,
-                                              listener: TaskListener = TaskListener.NULL): List<Challenge> {
+    fun generateAllPossibleChallengesForClass(
+        selectedClass: SourceFileDetails, parameters: Parameters, user: User,
+        listener: TaskListener = TaskListener.NULL
+    ): List<Challenge> {
         val challenges = arrayListOf<Challenge>()
         var challengeGenerationData = ChallengeGenerationData(parameters, user, selectedClass, listener)
 
@@ -82,7 +95,8 @@ object ChallengeFactory {
         }
 
         JacocoUtil.getNotFullyCoveredMethodEntries(FilePath(selectedClass.jacocoMethodFile)).forEach { method ->
-            challengeGenerationData = ChallengeGenerationData(parameters, user, selectedClass, listener, method = method)
+            challengeGenerationData =
+                ChallengeGenerationData(parameters, user, selectedClass, listener, method = method)
             challenges.add(MethodCoverageChallenge(challengeGenerationData))
         }
 
@@ -111,7 +125,8 @@ object ChallengeFactory {
                 val lastBuildChallenges = property.getCompletedChallenges(parameters.projectName)
                     .filterIsInstance(BuildChallenge::class.java)
                 if (lastBuildChallenges.isNotEmpty()
-                    && System.currentTimeMillis() - lastBuildChallenges.last().getSolved() <= 604800000) return false
+                    && System.currentTimeMillis() - lastBuildChallenges.last().getSolved() <= 604800000
+                ) return false
                 val challenge = BuildChallenge(parameters)
                 val mapUser: User? = GitUtil.mapUser(
                     parameters.workspace.act(HeadCommitCallable(parameters.remote))
@@ -122,8 +137,12 @@ object ChallengeFactory {
                     && !property.getCurrentChallenges(parameters.projectName).contains(challenge)
                 ) {
                     property.newChallenge(parameters.projectName, challenge)
-                    EventHandler.addEvent(ChallengeGeneratedEvent(parameters.projectName, parameters.branch,
-                        property.getUser(), challenge))
+                    EventHandler.addEvent(
+                        ChallengeGeneratedEvent(
+                            parameters.projectName, parameters.branch,
+                            property.getUser(), challenge
+                        )
+                    )
                     listener.logger.println("[Gamekins] Generated new BuildChallenge")
                     user.save()
                     return true
@@ -164,7 +183,7 @@ object ChallengeFactory {
             }
             count++
 
-            val challengeClass = TestParameterChallenge::class.java
+            val challengeClass = MockChallenge::class.java
             val selectedFile = cla
                 ?: if (challengeClass.superclass == CoverageChallenge::class.java) {
                     val tempList = ArrayList(workList.filterIsInstance<SourceFileDetails>())
@@ -182,16 +201,23 @@ object ChallengeFactory {
                         continue
                     }
                     selectClass(tempList, initializeRankSelection(tempList))
+                } else if (challengeClass == MockChallenge::class.java) {
+                    val sourceFileDetails = workList.filterIsInstance<SourceFileDetails>()
+                    val tempList = filter(sourceFileDetails)
+                    if (sourceFileDetails.isEmpty()) {
+                        challenge = null
+                        continue
+                    }
+                    selectClass(tempList, initializeRankSelection(sourceFileDetails))
                 } else if (challengeClass == TestParameterChallenge::class.java) {
                     val testFileDetailsList = workList.filterIsInstance<TestFileDetails>()
                     val filteredList = testFileDetailsList.filter { it.testCount > 0 }
-                    if (filteredList.isEmpty()){
+                    if (filteredList.isEmpty()) {
                         challenge = null
                         continue
                     }
                     selectClass(filteredList, initializeRankSelection(filteredList))
-                }
-                else {
+                } else {
                     selectClass(workList, initializeRankSelection(workList))
                 }
 
@@ -205,7 +231,8 @@ object ChallengeFactory {
                     it.first is ClassCoverageChallenge
                             && (it.first).details.fileName == selectedFile.fileName
                             && (it.first)
-                        .details.packageName == selectedFile.packageName }) {
+                        .details.packageName == selectedFile.packageName
+                }) {
                 listener.logger.println(
                     "[Gamekins] Class ${selectedFile.fileName} in package " +
                             "${selectedFile.packageName} was rejected previously"
@@ -221,7 +248,8 @@ object ChallengeFactory {
             if (!storedChallenges.none {
                     it is ClassCoverageChallenge
                             && it.details.fileName == selectedFile.fileName
-                            && it.details.packageName == selectedFile.packageName }) {
+                            && it.details.packageName == selectedFile.packageName
+                }) {
                 listener.logger.println(
                     "[Gamekins] Class ${selectedFile.fileName} in package " +
                             "${selectedFile.packageName} is currently stored"
@@ -236,6 +264,7 @@ object ChallengeFactory {
                 challengeClass == TestChallenge::class.java -> {
                     challenge = generateTestChallenge(data, parameters, listener)
                 }
+
                 challengeClass.superclass == CoverageChallenge::class.java -> {
                     listener.logger.println(
                         TRY_CLASS + selectedFile.fileName + AND_TYPE
@@ -243,14 +272,18 @@ object ChallengeFactory {
                     )
                     challenge = generateCoverageChallenge(data, challengeClass)
                 }
+
                 challengeClass == MutationChallenge::class.java -> {
                     listener.logger.println(
                         TRY_CLASS + selectedFile.fileName + AND_TYPE
                                 + challengeClass
                     )
-                    challenge = generateMutationChallenge(selectedFile as SourceFileDetails, parameters,
-                        listener, user)
+                    challenge = generateMutationChallenge(
+                        selectedFile as SourceFileDetails, parameters,
+                        listener, user
+                    )
                 }
+
                 challengeClass == SmellChallenge::class.java -> {
                     listener.logger.println(
                         TRY_CLASS + selectedFile.fileName + AND_TYPE
@@ -258,6 +291,7 @@ object ChallengeFactory {
                     )
                     challenge = generateSmellChallenge(data, listener)
                 }
+
                 challengeClass == TestParameterChallenge::class.java -> {
                     listener.logger.println(
                         TRY_CLASS + selectedFile.fileName + AND_TYPE
@@ -265,6 +299,7 @@ object ChallengeFactory {
                     )
                     challenge = generateParameterChallenge(data)
                 }
+
                 challengeClass == Challenge::class.java -> challenge = null
                 challengeClass == CoverageChallenge::class.java -> challenge = null
                 else -> {
@@ -273,8 +308,10 @@ object ChallengeFactory {
             }
 
             if (rejectedChallenges.any { it.first == challenge }) {
-                listener.logger.println("[Gamekins] Challenge ${challenge?.toEscapedString()} was already " +
-                        "rejected previously")
+                listener.logger.println(
+                    "[Gamekins] Challenge ${challenge?.toEscapedString()} was already " +
+                            "rejected previously"
+                )
                 challenge = null
             }
 
@@ -327,25 +364,31 @@ object ChallengeFactory {
                         .getConstructor(ChallengeGenerationData::class.java)
                         .newInstance(data)
                 }
+
                 MethodCoverageChallenge::class.java -> {
                     data.method = JacocoUtil.chooseRandomMethod(data.selectedFile, data.parameters.workspace)
                     if (data.method == null) null else challengeClass
                         .getConstructor(ChallengeGenerationData::class.java)
                         .newInstance(data)
                 }
+
                 BranchCoverageChallenge::class.java -> {
-                    data.line = JacocoUtil.chooseRandomLine(data.selectedFile, data.parameters.workspace,
-                        partially = true)
+                    data.line = JacocoUtil.chooseRandomLine(
+                        data.selectedFile, data.parameters.workspace,
+                        partially = true
+                    )
                     if (data.line == null) null else challengeClass
                         .getConstructor(ChallengeGenerationData::class.java)
                         .newInstance(data)
                 }
+
                 ExceptionCoverageChallenge::class.java -> {
                     data.line = JacocoUtil.chooseExceptionRandomLine(data.selectedFile, data.parameters.workspace)
                     if (data.line == null) null else challengeClass
                         .getConstructor(ChallengeGenerationData::class.java)
                         .newInstance(data)
                 }
+
                 else -> {
                     data.line = JacocoUtil.chooseRandomLine(data.selectedFile, data.parameters.workspace)
                     if (data.line == null) null else challengeClass
@@ -362,15 +405,19 @@ object ChallengeFactory {
      */
     @JvmStatic
     @Suppress("UNUSED_PARAMETER", "unused")
-    fun generateMutationChallenge(fileDetails: SourceFileDetails, parameters: Parameters,
-        listener: TaskListener, user: User) : MutationChallenge? {
+    fun generateMutationChallenge(
+        fileDetails: SourceFileDetails, parameters: Parameters,
+        listener: TaskListener, user: User
+    ): MutationChallenge? {
 
         if (!fileDetails.jacocoSourceFile.exists()) return null
 
         if (!MutationUtil.executePIT(fileDetails, parameters, listener)) return null
 
-        val mutationReport = FilePath(parameters.workspace.channel,
-            parameters.workspace.remote + Constants.Mutation.REPORT_PATH)
+        val mutationReport = FilePath(
+            parameters.workspace.channel,
+            parameters.workspace.remote + Constants.Mutation.REPORT_PATH
+        )
         if (!mutationReport.exists()) return null
         val mutants = mutationReport.readToString().split("\n")
             .filter { it.startsWith("<mutation ") }.filter { !it.contains("status='KILLED'") }
@@ -404,10 +451,16 @@ object ChallengeFactory {
 
             for (i in property.getCurrentChallenges(parameters.projectName).size until maxChallenges) {
                 if (userFiles.size == 0) {
-                    property.newChallenge(parameters.projectName,
-                        DummyChallenge(parameters, Constants.NOTHING_DEVELOPED))
-                    EventHandler.addEvent(ChallengeGeneratedEvent(parameters.projectName, parameters.branch,
-                        property.getUser(), DummyChallenge(parameters, Constants.Error.GENERATION)))
+                    property.newChallenge(
+                        parameters.projectName,
+                        DummyChallenge(parameters, Constants.NOTHING_DEVELOPED)
+                    )
+                    EventHandler.addEvent(
+                        ChallengeGeneratedEvent(
+                            parameters.projectName, parameters.branch,
+                            property.getUser(), DummyChallenge(parameters, Constants.Error.GENERATION)
+                        )
+                    )
                     break
                 }
 
@@ -422,7 +475,7 @@ object ChallengeFactory {
      * Generates a [TestChallenge].
      */
     fun generateTestChallenge(data: ChallengeGenerationData, parameters: Parameters, listener: TaskListener)
-    : TestChallenge {
+            : TestChallenge {
 
         data.testCount = JUnitUtil.getTestCount(parameters.workspace)
         data.headCommitHash = parameters.workspace.act(HeadCommitCallable(parameters.remote)).name
@@ -486,8 +539,12 @@ object ChallengeFactory {
 
             property.newChallenge(parameters.projectName, challenge)
             listener.logger.println("[Gamekins] Added challenge ${challenge.toEscapedString()}")
-            EventHandler.addEvent(ChallengeGeneratedEvent(parameters.projectName, parameters.branch,
-                property.getUser(), challenge))
+            EventHandler.addEvent(
+                ChallengeGeneratedEvent(
+                    parameters.projectName, parameters.branch,
+                    property.getUser(), challenge
+                )
+            )
             generated++
         } catch (e: Exception) {
             e.printStackTrace(listener.logger)
@@ -537,11 +594,84 @@ object ChallengeFactory {
         return selectedClass
     }
 
-    private fun generateParameterChallenge(data: ChallengeGenerationData): TestParameterChallenge? {
+    private fun generateParameterChallenge(data: ChallengeGenerationData): TestParameterChallenge {
+
+        val testsName = (data.selectedFile as TestFileDetails).testNames
+
+        val testsCodes = data.selectedFile.codeByTest
+
+        return TestParameterChallenge(testsName, testsCodes, data.selectedFile)
+    }
+
+    private fun filter(sourceFileDetails: List<SourceFileDetails>): List<SourceFileDetails> {
+
+        val filteredFilesByCoverage = sourceFileDetails.filter { it.coverage < 0.9 }
+
+        val uniquePaths = mutableSetOf<String>()
+
+        filteredFilesByCoverage.forEach { sourceFile ->
+            sourceFile.file.parentFile?.absolutePath?.let { uniquePaths.add(it) }
+        }
+
+        val shortestPath = uniquePaths.minByOrNull { it.length }
+
+        val decoded = URLDecoder.decode(shortestPath, StandardCharsets.UTF_8)
+
+        val classServiceList = mutableListOf<String>()
+
+        for (i in sourceFileDetails.indices) {
+
+            try {
+
+                val sourceFile = sourceFileDetails[i].jacocoSourceFile
+
+                val document: Document = Jsoup.parse(sourceFile, "UTF-8")
+
+                val code: String = document.select("pre, code").text()
+
+                if (isServiceClass(code)) {
+                    classServiceList.add(sourceFileDetails[i].packageName + "." + sourceFileDetails[i].fileName)
+                }
+
+            } catch (_: Exception) {
+
+            }
+        }
+
+        val ckResultByClass = getCKMetricsResult(decoded)
+
+        val classListCanBeTested = mutableListOf<String>()
+
+        for (i in classServiceList.indices) {
+            val visibleMethodsFromClass = ckResultByClass[classServiceList[i]]?.visibleMethods
+
+            if (!visibleMethodsFromClass.isNullOrEmpty() && visibleMethodsFromClass.any { it.cbo > 0 }) {
+                classListCanBeTested.add(classServiceList[i])
+            }
+
+        }
+
+        val resultSourceFileDetails = mutableListOf<SourceFileDetails>()
+
+        for (i in filteredFilesByCoverage.indices) {
+
+            val fileName = filteredFilesByCoverage[i].packageName + "." + filteredFilesByCoverage[i].fileName
+
+            if (classListCanBeTested.contains(fileName)) {
+                resultSourceFileDetails.add(filteredFilesByCoverage[i])
+            }
 
 
-        val teste = (data.selectedFile as TestFileDetails).testCount
+        }
 
-        return null
+        return resultSourceFileDetails
+
+    }
+
+    private fun isServiceClass(javaCode: String): Boolean {
+
+        val regex = """\s*@Service\s*""".toRegex()
+
+        return regex.containsMatchIn(javaCode)
     }
 }

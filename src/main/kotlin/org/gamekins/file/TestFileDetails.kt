@@ -37,8 +37,8 @@ class TestFileDetails(parameters: Parameters,
     private val junitFile: File
     val testCount: Int
     private val testFailCount: Int
-    private val testNames: HashSet<String>
-    private val codeByTest: HashMap<String, String>
+    val testNames: HashSet<String>
+    val codeByTest: HashMap<String, String>
 
     init {
         val files: List<FilePath> = parameters.workspace.act(
@@ -65,4 +65,6 @@ class TestFileDetails(parameters: Parameters,
     override fun isTest(): Boolean {
         return true
     }
+
+
 }

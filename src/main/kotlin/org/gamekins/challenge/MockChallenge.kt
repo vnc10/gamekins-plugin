@@ -6,7 +6,7 @@ import org.gamekins.file.FileDetails
 import org.gamekins.util.Constants
 import org.gamekins.util.ParameterUtil
 
-class TestParameterChallenge(testsName: HashSet<String>, testsCodes: HashMap<String, String>, val details: FileDetails) : Challenge {
+class MockChallenge(testsName: HashSet<String>, testsCodes: HashMap<String, String>, val details: FileDetails) : Challenge {
 
     private val testName: String = ParameterUtil.getTestName(testsName).toString()
     private val testCode: String = ParameterUtil.getTest(testName, testsCodes).toString()
