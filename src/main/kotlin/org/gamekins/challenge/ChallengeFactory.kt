@@ -183,7 +183,7 @@ object ChallengeFactory {
             }
             count++
 
-            val challengeClass = MockChallenge::class.java
+            val challengeClass = TestParameterChallenge::class.java
             val selectedFile = cla
                 ?: if (challengeClass.superclass == CoverageChallenge::class.java) {
                     val tempList = ArrayList(workList.filterIsInstance<SourceFileDetails>())
@@ -297,7 +297,7 @@ object ChallengeFactory {
                         TRY_CLASS + selectedFile.fileName + AND_TYPE
                                 + challengeClass
                     )
-                    challenge = generateParameterChallenge(data)
+                    challenge = generateParameterChallenge(data, parameters, listener)
                 }
 
                 challengeClass == Challenge::class.java -> challenge = null
@@ -594,13 +594,16 @@ object ChallengeFactory {
         return selectedClass
     }
 
-    private fun generateParameterChallenge(data: ChallengeGenerationData): TestParameterChallenge {
+    private fun generateParameterChallenge(data: ChallengeGenerationData, parameters: Parameters, listener: TaskListener): TestParameterChallenge {
 
         val testsName = (data.selectedFile as TestFileDetails).testNames
 
         val testsCodes = data.selectedFile.codeByTest
 
-        return TestParameterChallenge(testsName, testsCodes, data.selectedFile)
+        data.testCount = JUnitUtil.getTestCount(parameters.workspace)
+        data.headCommitHash = parameters.workspace.act(HeadCommitCallable(parameters.remote)).name
+
+        return TestParameterChallenge(testsName, testsCodes, data, data.selectedFile)
     }
 
     private fun filter(sourceFileDetails: List<SourceFileDetails>): List<SourceFileDetails> {

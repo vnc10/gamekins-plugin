@@ -21,9 +21,7 @@ object ParameterUtil {
     @JvmStatic
     fun getTestName(testsName: HashSet<String>): String? {
 
-        val firstElement = testsName.firstOrNull()
-
-        return firstElement
+        return testsName.randomOrNull()
 
     }
 

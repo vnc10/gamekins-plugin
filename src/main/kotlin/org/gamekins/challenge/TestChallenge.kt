@@ -100,7 +100,6 @@ class TestChallenge(data: Challenge.ChallengeGenerationData) : Challenge {
      * the last commit ([currentCommit]).
      */
     override fun isSolved(parameters: Parameters, run: Run<*, *>, listener: TaskListener): Boolean {
-        if (this.parameters.branch != parameters.branch) return false
         try {
             val testCountSolved = JUnitUtil.getTestCount(parameters.workspace, run)
             if (testCountSolved <= testCount) {

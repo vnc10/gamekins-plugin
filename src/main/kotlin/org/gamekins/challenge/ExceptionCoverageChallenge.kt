@@ -39,28 +39,6 @@ class ExceptionCoverageChallenge(data: Challenge.ChallengeGenerationData)
         codeSnippet = LineCoverageChallenge.createCodeSnippet(details, lineNumber,  data.parameters.workspace)
     }
 
-    companion object {
-        fun createCodeSnippet(classDetails: SourceFileDetails,
-                                       target: Any, workspace: FilePath): String {
-            if (target !is Int) return ""
-            else if (target < 0) return ""
-            if (classDetails.jacocoSourceFile.exists()) {
-                val javaHtmlPath = JacocoUtil.calculateCurrentFilePath(
-                    workspace, classDetails.jacocoSourceFile, classDetails.parameters.remote
-                )
-                val snippetElements = JacocoUtil.getLinesInRange(javaHtmlPath, target, 2)
-                if (snippetElements.first == "") return ""
-
-                return "<pre class='prettyprint linenums:${target - 1} mt-2'><code class='language-java'>" +
-                        snippetElements.first +
-                        "</code></pre>"
-            }
-            return ""
-        }
-    }
-
-
-
     override fun equals(other: Any?): Boolean {
         if (other == null) return false
         if (other !is ExceptionCoverageChallenge) return false
@@ -71,11 +49,11 @@ class ExceptionCoverageChallenge(data: Challenge.ChallengeGenerationData)
     }
 
     override fun getName(): String {
-        return "Line Coverage"
+        return "Exception Coverage"
     }
 
     override fun getScore(): Int {
-        return if (coverage >= 0.8 || coverageType == "pc") 3 else 2
+        return 4
     }
 
     override fun getSnippet(): String {
