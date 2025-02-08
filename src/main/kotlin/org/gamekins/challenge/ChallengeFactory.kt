@@ -183,9 +183,9 @@ object ChallengeFactory {
             }
             count++
 
-            val challengeClass = TestParameterChallenge::class.java
+            val challengeClass = chooseChallengeType()
             val selectedFile = cla
-                ?: if (challengeClass.superclass == CoverageChallenge::class.java) {
+                ?: if (challengeClass.superclass == CoverageChallenge::class.java && challengeClass != MockChallenge::class.java) {
                     val tempList = ArrayList(workList.filterIsInstance<SourceFileDetails>())
                     tempList.removeIf { details: SourceFileDetails -> details.coverage == 1.0 }
                     tempList.removeIf { details: SourceFileDetails -> !details.filesExists() }
@@ -366,6 +366,13 @@ object ChallengeFactory {
                 }
 
                 MethodCoverageChallenge::class.java -> {
+                    data.method = JacocoUtil.chooseRandomMethod(data.selectedFile, data.parameters.workspace)
+                    if (data.method == null) null else challengeClass
+                        .getConstructor(ChallengeGenerationData::class.java)
+                        .newInstance(data)
+                }
+
+                MockChallenge::class.java -> {
                     data.method = JacocoUtil.chooseRandomMethod(data.selectedFile, data.parameters.workspace)
                     if (data.method == null) null else challengeClass
                         .getConstructor(ChallengeGenerationData::class.java)
