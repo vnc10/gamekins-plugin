@@ -169,6 +169,7 @@ class GamePublisherDescriptor : BuildStepDescriptor<Publisher?>(GamePublisher::c
         challenges[ExceptionCoverageChallenge::class.java] = 4
         challenges[MethodCoverageChallenge::class.java] = 3
         challenges[MockChallenge::class.java] = 3
+        challenges[IntegrationChallenge::class.java] = 3
         challenges[TestChallenge::class.java] = 1
         challenges[TestParameterChallenge::class.java] = 1
         challenges[MutationChallenge::class.java] = 6

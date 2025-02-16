@@ -185,7 +185,7 @@ object ChallengeFactory {
 
             val challengeClass = chooseChallengeType()
             val selectedFile = cla
-                ?: if (challengeClass.superclass == CoverageChallenge::class.java && challengeClass != MockChallenge::class.java) {
+                ?: if (challengeClass.superclass == CoverageChallenge::class.java && challengeClass != MockChallenge::class.java && challengeClass != IntegrationChallenge::class.java) {
                     val tempList = ArrayList(workList.filterIsInstance<SourceFileDetails>())
                     tempList.removeIf { details: SourceFileDetails -> details.coverage == 1.0 }
                     tempList.removeIf { details: SourceFileDetails -> !details.filesExists() }
@@ -203,7 +203,15 @@ object ChallengeFactory {
                     selectClass(tempList, initializeRankSelection(tempList))
                 } else if (challengeClass == MockChallenge::class.java) {
                     val sourceFileDetails = workList.filterIsInstance<SourceFileDetails>()
-                    val tempList = filter(sourceFileDetails)
+                    val tempList = filter(sourceFileDetails, ::isServiceClass)
+                    if (sourceFileDetails.isEmpty()) {
+                        challenge = null
+                        continue
+                    }
+                    selectClass(tempList, initializeRankSelection(sourceFileDetails))
+                } else if (challengeClass == IntegrationChallenge::class.java) {
+                    val sourceFileDetails = workList.filterIsInstance<SourceFileDetails>()
+                    val tempList = filter(sourceFileDetails, ::isControllerClass)
                     if (sourceFileDetails.isEmpty()) {
                         challenge = null
                         continue
@@ -373,6 +381,13 @@ object ChallengeFactory {
                 }
 
                 MockChallenge::class.java -> {
+                    data.method = JacocoUtil.chooseRandomMethod(data.selectedFile, data.parameters.workspace)
+                    if (data.method == null) null else challengeClass
+                        .getConstructor(ChallengeGenerationData::class.java)
+                        .newInstance(data)
+                }
+
+                IntegrationChallenge::class.java -> {
                     data.method = JacocoUtil.chooseRandomMethod(data.selectedFile, data.parameters.workspace)
                     if (data.method == null) null else challengeClass
                         .getConstructor(ChallengeGenerationData::class.java)
@@ -601,7 +616,11 @@ object ChallengeFactory {
         return selectedClass
     }
 
-    private fun generateParameterChallenge(data: ChallengeGenerationData, parameters: Parameters, listener: TaskListener): TestParameterChallenge {
+    private fun generateParameterChallenge(
+        data: ChallengeGenerationData,
+        parameters: Parameters,
+        listener: TaskListener
+    ): TestParameterChallenge {
 
         val testsName = (data.selectedFile as TestFileDetails).testNames
 
@@ -613,7 +632,7 @@ object ChallengeFactory {
         return TestParameterChallenge(testsName, testsCodes, data, data.selectedFile)
     }
 
-    private fun filter(sourceFileDetails: List<SourceFileDetails>): List<SourceFileDetails> {
+    private fun filter(sourceFileDetails: List<SourceFileDetails>, annotationChecker: (String) -> Boolean): List<SourceFileDetails> {
 
         val filteredFilesByCoverage = sourceFileDetails.filter { it.coverage < 0.9 }
 
@@ -639,7 +658,7 @@ object ChallengeFactory {
 
                 val code: String = document.select("pre, code").text()
 
-                if (isServiceClass(code)) {
+                if (annotationChecker(code)) {
                     classServiceList.add(sourceFileDetails[i].packageName + "." + sourceFileDetails[i].fileName)
                 }
 
@@ -682,6 +701,11 @@ object ChallengeFactory {
 
         val regex = """\s*@Service\s*""".toRegex()
 
+        return regex.containsMatchIn(javaCode)
+    }
+
+    private fun isControllerClass(javaCode: String): Boolean {
+        val regex = """\s*@(Service|Controller|RestController)\s*""".toRegex()
         return regex.containsMatchIn(javaCode)
     }
 }
