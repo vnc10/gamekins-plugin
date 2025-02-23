@@ -50,7 +50,7 @@ class TestParameterChallenge(
     }
 
     override fun getScore(): Int {
-        return 4
+        return 3
     }
 
     override fun getSolved(): Long {

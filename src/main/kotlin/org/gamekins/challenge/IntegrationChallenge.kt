@@ -39,7 +39,7 @@ class IntegrationChallenge(data: ChallengeGenerationData)
     }
 
     override fun getScore(): Int {
-        return if ((lines - missedLines) / lines.toDouble() > 0.8) 8 else 4
+        return if ((lines - missedLines) / lines.toDouble() > 0.8) 6 else 6
     }
 
     override fun hashCode(): Int {

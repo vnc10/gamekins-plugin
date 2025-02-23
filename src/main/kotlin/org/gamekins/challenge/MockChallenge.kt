@@ -42,7 +42,7 @@ class MockChallenge(data: ChallengeGenerationData) :
     }
 
     override fun getScore(): Int {
-        return if ((lines - missedLines) / lines.toDouble() > 0.8) 3 else 2
+        return if ((lines - missedLines) / lines.toDouble() > 0.8) 4 else 4
     }
 
     override fun hashCode(): Int {

@@ -53,7 +53,7 @@ class ExceptionCoverageChallenge(data: Challenge.ChallengeGenerationData)
     }
 
     override fun getScore(): Int {
-        return 4
+        return 2
     }
 
     override fun getSnippet(): String {
@@ -148,7 +148,7 @@ class ExceptionCoverageChallenge(data: Challenge.ChallengeGenerationData)
     }
 
     override fun toString(): String {
-        return ("Write a test to cover linesssssss " + "<b>" + lineNumber + "</b> in class <b>" + details.fileName
+        return ("Write a test using assertThrows to cover line " + "<b>" + lineNumber + "</b> in class <b>" + details.fileName
                 + "</b> in package <b>" + details.packageName + "</b> (created for branch "
                 + details.parameters.branch + ")")
     }
