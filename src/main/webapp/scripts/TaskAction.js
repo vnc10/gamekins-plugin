@@ -72,7 +72,7 @@ jQuery3('#rejectButtonConfirm').on('click', function () {
                     }
                 }
                 modal.modal("hide")
-                location.reload()
+                window.history.back();
             }
         })
     } else {
@@ -91,7 +91,7 @@ jQuery3('#rejectButtonConfirm').on('click', function () {
 
                 }
                 modal.modal("hide")
-                location.reload()
+                window.history.back();
             }
         })
     }
@@ -116,7 +116,7 @@ jQuery3('.undoReject').on('click', function () {
             } else {
                 jQuery3('#error-text-rejected-table')[0].innerHTML = ""
             }
-            location.reload()
+            window.history.back();
         }
     })
 })
@@ -138,7 +138,7 @@ jQuery3('.storeChallenge').on('click', function () {
             } else {
                 jQuery3('#error-text-current-table')[0].innerHTML = ""
             }
-            location.reload()
+            window.history.back();
         }
     })
 
@@ -163,7 +163,7 @@ jQuery3('.undoStore').on('click', function () {
         } else {
             jQuery3('#error-text-stored')[0].innerHTML = ""
         }
-            location.reload()
+        window.history.back();
         }
     })
 })
@@ -202,7 +202,7 @@ jQuery3('.sendChallenge').on('click', function () {
             } else {
                 jQuery3('#error-text-send')[0].innerHTML = ""
             }
-        location.reload()
+            window.history.back();
         }
     })
 })
