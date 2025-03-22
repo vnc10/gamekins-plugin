@@ -95,9 +95,12 @@ object JacocoUtil {
      */
     @JvmStatic
     fun chooseRandomLine(classDetails: SourceFileDetails, workspace: FilePath, partially: Boolean = false)
-    : Element? {
-        val elements = getLines(calculateCurrentFilePath(
-                workspace, classDetails.jacocoSourceFile, classDetails.parameters.remote), partially)
+            : Element? {
+        val elements = getLines(
+            calculateCurrentFilePath(
+                workspace, classDetails.jacocoSourceFile, classDetails.parameters.remote
+            ), partially
+        )
         return if (elements.isEmpty()) null else elements[Random.nextInt(elements.size)]
     }
 
@@ -105,10 +108,31 @@ object JacocoUtil {
     fun chooseExceptionRandomLine(classDetails: SourceFileDetails, workspace: FilePath)
             : Element? {
         try {
-            return getExceptionLine(calculateCurrentFilePath(workspace, classDetails.jacocoSourceFile, classDetails.parameters.remote))
+            return getExceptionLine(
+                calculateCurrentFilePath(
+                    workspace,
+                    classDetails.jacocoSourceFile,
+                    classDetails.parameters.remote
+                )
+            )
         } catch (e: Exception) {
             return null
         }
+    }
+
+    @JvmStatic
+    fun verifyExceptionUnitTest(classDetails: SourceFileDetails, workspace: FilePath)
+            : Boolean {
+
+        val jacocoSourceFile =
+            calculateCurrentFilePath(workspace, classDetails.jacocoSourceFile, classDetails.parameters.remote)
+        val document = Jsoup.parse(jacocoSourceFile.readToString())
+        val elements = document.select("span.pc, span.nc")
+        val exceptionElements = elements.filter { elements ->
+            val text = elements.text()
+            text.contains("throw new")
+        }
+        return exceptionElements.isNotEmpty()
     }
 
     /**
@@ -117,8 +141,11 @@ object JacocoUtil {
      */
     @JvmStatic
     fun chooseRandomMethod(classDetails: SourceFileDetails, workspace: FilePath): CoverageMethod? {
-        val methods = getNotFullyCoveredMethodEntries(calculateCurrentFilePath(
-                workspace, classDetails.jacocoMethodFile, classDetails.parameters.remote))
+        val methods = getNotFullyCoveredMethodEntries(
+            calculateCurrentFilePath(
+                workspace, classDetails.jacocoMethodFile, classDetails.parameters.remote
+            )
+        )
         return if (methods.isEmpty()) null else methods[Random.nextInt(methods.size)]
     }
 
@@ -131,7 +158,8 @@ object JacocoUtil {
         var packageName = StringBuilder()
         for (i in pathSplit.size - 2 downTo 0) {
             if ((pathSplit[i] == "src" || pathSplit[i] == "main" || pathSplit[i] == "java" || pathSplit[i] == "kotlin")
-                    && packageName.isNotEmpty()) {
+                && packageName.isNotEmpty()
+            ) {
                 packageName = StringBuilder(packageName.substring(1))
                 break
             }
@@ -159,9 +187,11 @@ object JacocoUtil {
                                 .find { it.key == "href" && it.value.matches(Regex(".*#L\\d+")) }
                             firstLineID = temp?.value?.substringAfterLast("#") ?: ""
                         }
+
                         value.matches(Regex("h\\d+")) -> {
                             missedLines = node.childNode(0).toString().toInt()
                         }
+
                         value.matches(Regex("i\\d+")) -> {
                             lines = node.childNode(0).toString().toInt()
                         }
@@ -190,10 +220,14 @@ object JacocoUtil {
     fun generateDocument(jacocoSourceFile: FilePath, jacocoCSVFile: FilePath, listener: TaskListener): Document? {
         return try {
             if (!jacocoSourceFile.exists() || !jacocoCSVFile.exists()) {
-                listener.logger.println("[Gamekins] JaCoCo source file " + jacocoSourceFile.remote
-                        + Constants.EXISTS + jacocoSourceFile.exists())
-                listener.logger.println("[Gamekins] JaCoCo csv file " + jacocoCSVFile.remote
-                        + Constants.EXISTS + jacocoCSVFile.exists())
+                listener.logger.println(
+                    "[Gamekins] JaCoCo source file " + jacocoSourceFile.remote
+                            + Constants.EXISTS + jacocoSourceFile.exists()
+                )
+                listener.logger.println(
+                    "[Gamekins] JaCoCo csv file " + jacocoCSVFile.remote
+                            + Constants.EXISTS + jacocoCSVFile.exists()
+                )
                 return null
             }
             generateDocument(jacocoSourceFile)
@@ -276,13 +310,19 @@ object JacocoUtil {
      * Similar to [JacocoUtil.calculateCurrentFilePath], only specific to JaCoCo files.
      */
     @JvmStatic
-    fun getJacocoFileInMultiBranchProject(run: Run<*, *>, parameters: Parameters,
-                                          jacocoFile: FilePath, oldBranch: String): FilePath {
+    fun getJacocoFileInMultiBranchProject(
+        run: Run<*, *>, parameters: Parameters,
+        jacocoFile: FilePath, oldBranch: String
+    ): FilePath {
         return if (run.parent.parent is WorkflowMultiBranchProject
-                && parameters.branch != oldBranch) {
-            FilePath(jacocoFile.channel, jacocoFile.remote.replace(
+            && parameters.branch != oldBranch
+        ) {
+            FilePath(
+                jacocoFile.channel, jacocoFile.remote.replace(
                     parameters.projectName + "_" + oldBranch,
-                    parameters.projectName + "_" + parameters.branch))
+                    parameters.projectName + "_" + parameters.branch
+                )
+            )
         } else {
             jacocoFile
         }
@@ -293,14 +333,24 @@ object JacocoUtil {
      * unchanged. Returns the nearest element if it has changed. Trim [originalLine] before passing to this method.
      */
     @JvmStatic
-    fun getLineNumberAfterCodeChange(details: SourceFileDetails, originalLine: String, originalLineNumber: Int,
-                                     parameters: Parameters, run: Run<*, *>, listener: TaskListener): Int {
-        val jacocoSourceFile = getJacocoFileInMultiBranchProject(run, parameters,
-            calculateCurrentFilePath(parameters.workspace, details.jacocoSourceFile,
-                details.parameters.remote), details.parameters.branch)
-        val jacocoCSVFile = getJacocoFileInMultiBranchProject(run, parameters,
-            calculateCurrentFilePath(parameters.workspace, details.jacocoCSVFile,
-                details.parameters.remote), details.parameters.branch)
+    fun getLineNumberAfterCodeChange(
+        details: SourceFileDetails, originalLine: String, originalLineNumber: Int,
+        parameters: Parameters, run: Run<*, *>, listener: TaskListener
+    ): Int {
+        val jacocoSourceFile = getJacocoFileInMultiBranchProject(
+            run, parameters,
+            calculateCurrentFilePath(
+                parameters.workspace, details.jacocoSourceFile,
+                details.parameters.remote
+            ), details.parameters.branch
+        )
+        val jacocoCSVFile = getJacocoFileInMultiBranchProject(
+            run, parameters,
+            calculateCurrentFilePath(
+                parameters.workspace, details.jacocoCSVFile,
+                details.parameters.remote
+            ), details.parameters.branch
+        )
 
         val document = generateDocument(jacocoSourceFile, jacocoCSVFile, listener) ?: return -1
 
@@ -309,7 +359,8 @@ object JacocoUtil {
         elements.addAll(document.select("span." + "nc"))
         for (element in elements) {
             if (element.html().trim() == originalLine
-                && element.attr("id").substring(1).toInt() == originalLineNumber) {
+                && element.attr("id").substring(1).toInt() == originalLineNumber
+            ) {
                 return originalLineNumber
             }
         }
@@ -321,7 +372,8 @@ object JacocoUtil {
                 return elements[0].attr("id").substring(1).toInt()
             } else {
                 val nearestElement = elements.minByOrNull {
-                    abs(originalLineNumber - it.attr("id").substring(1).toInt()) }
+                    abs(originalLineNumber - it.attr("id").substring(1).toInt())
+                }
                 if (nearestElement != null) {
                     return nearestElement.attr("id").substring(1).toInt()
                 }
@@ -377,22 +429,28 @@ object JacocoUtil {
         var targetLine = ""
         val lineIndex: Int = when (target) {
             is Int -> {
-                if (target < 0) { return Pair("", "") }
+                if (target < 0) {
+                    return Pair("", "")
+                }
                 val elem = document.selectFirst("#L$target") ?: return Pair("", "")
                 targetLine = elem.toString()
                 lines.indexOfFirst { it == elem.toString() }
             }
+
             is String -> {
                 lines.indexOfFirst { it.contains(target) }
             }
-            else ->  return Pair("", "")
+
+            else -> return Pair("", "")
         }
 
-        if (lineIndex < 0) { return Pair("", "") }
+        if (lineIndex < 0) {
+            return Pair("", "")
+        }
 
         var res = ""
         val offset = if (linesAround % 2 != 0) 1 else 0
-        for (i in (lineIndex - (linesAround/2))..(lineIndex + (linesAround/2 + offset))) {
+        for (i in (lineIndex - (linesAround / 2))..(lineIndex + (linesAround / 2 + offset))) {
             val temp = lines.getOrNull(i)
             if (temp != null) {
                 res += Jsoup.clean(temp, "", Safelist.none(), outputSettings) + System.lineSeparator()
@@ -478,7 +536,7 @@ object JacocoUtil {
             if (linesIterator.next().contains(line)) {
                 while (linesIterator.hasPrevious()) {
                     val previous = linesIterator.previous()
-                    if (!previous.contains(line) && previous.isNotBlank() && previous.trim() != "{")  {
+                    if (!previous.contains(line) && previous.isNotBlank() && previous.trim() != "{") {
                         return checkMethodHeaderForGetterSetter(previous, line)
                     }
                 }
@@ -519,8 +577,8 @@ object JacocoUtil {
      * @author Philipp Straubinger
      * @since 0.1
      */
-    class FilesOfAllSubDirectoriesCallable(private val directory: FilePath, private val regex: String)
-        : MasterToSlaveCallable<ArrayList<FilePath>, IOException?>() {
+    class FilesOfAllSubDirectoriesCallable(private val directory: FilePath, private val regex: String) :
+        MasterToSlaveCallable<ArrayList<FilePath>, IOException?>() {
 
         /**
          * Performs computation and returns the result,
@@ -537,8 +595,10 @@ object JacocoUtil {
      * @author Philipp Straubinger
      * @since 0.1
      */
-    class CoverageMethod(val methodName: String, val lines: Int, val missedLines: Int,
-                         val firstLineID: String)
+    class CoverageMethod(
+        val methodName: String, val lines: Int, val missedLines: Int,
+        val firstLineID: String
+    )
 
     @JvmStatic
     @Throws(IOException::class, InterruptedException::class)

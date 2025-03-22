@@ -185,7 +185,7 @@ object ChallengeFactory {
 
             val challengeClass = chooseChallengeType()
             val selectedFile = cla
-                ?: if (challengeClass.superclass == CoverageChallenge::class.java && challengeClass != MockChallenge::class.java && challengeClass != IntegrationChallenge::class.java) {
+                ?: if (challengeClass.superclass == CoverageChallenge::class.java && challengeClass != MockChallenge::class.java && challengeClass != IntegrationChallenge::class.java && challengeClass != ExceptionCoverageChallenge::class.java) {
                     val tempList = ArrayList(workList.filterIsInstance<SourceFileDetails>())
                     tempList.removeIf { details: SourceFileDetails -> details.coverage == 1.0 }
                     tempList.removeIf { details: SourceFileDetails -> !details.filesExists() }
@@ -225,6 +225,16 @@ object ChallengeFactory {
                         continue
                     }
                     selectClass(filteredList, initializeRankSelection(filteredList))
+                } else if (challengeClass == ExceptionCoverageChallenge::class.java) {
+                    val tempList = ArrayList(workList.filterIsInstance<SourceFileDetails>())
+                    tempList.removeIf { details: SourceFileDetails -> details.coverage == 1.0 }
+                    tempList.removeIf { details: SourceFileDetails -> !details.filesExists() }
+                    tempList.removeIf { details: SourceFileDetails -> !JacocoUtil.verifyExceptionUnitTest(details, parameters.workspace) }
+                    if (tempList.isEmpty()) {
+                        challenge = null
+                        continue
+                    }
+                    selectClass(tempList, initializeRankSelection(tempList))
                 } else {
                     selectClass(workList, initializeRankSelection(workList))
                 }
@@ -632,7 +642,10 @@ object ChallengeFactory {
         return TestParameterChallenge(testsName, testsCodes, data, data.selectedFile)
     }
 
-    private fun filter(sourceFileDetails: List<SourceFileDetails>, annotationChecker: (String) -> Boolean): List<SourceFileDetails> {
+    private fun filter(
+        sourceFileDetails: List<SourceFileDetails>,
+        annotationChecker: (String) -> Boolean
+    ): List<SourceFileDetails> {
 
         val filteredFilesByCoverage = sourceFileDetails.filter { it.coverage < 0.9 }
 
