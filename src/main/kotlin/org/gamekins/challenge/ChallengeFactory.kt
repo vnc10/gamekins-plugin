@@ -42,6 +42,7 @@ import org.gamekins.util.GitUtil.HeadCommitCallable
 import org.gamekins.util.JUnitUtil
 import org.gamekins.util.JacocoUtil
 import org.gamekins.util.MutationUtil
+import org.gamekins.util.ParameterUtil
 import org.gamekins.util.SmellUtil
 import org.jsoup.Jsoup
 import org.jsoup.nodes.Document
@@ -630,16 +631,24 @@ object ChallengeFactory {
         data: ChallengeGenerationData,
         parameters: Parameters,
         listener: TaskListener
-    ): TestParameterChallenge {
+    ): TestParameterChallenge? {
 
         val testsName = (data.selectedFile as TestFileDetails).testNames
 
+        val oneTestName = ParameterUtil.getTestName(testsName)
+
+        if (oneTestName.isNullOrEmpty()) {
+            return null
+        }
+
         val testsCodes = data.selectedFile.codeByTest
+
+        val oneTestCode = ParameterUtil.getTest(oneTestName, testsCodes).toString()
 
         data.testCount = JUnitUtil.getTestCount(parameters.workspace)
         data.headCommitHash = parameters.workspace.act(HeadCommitCallable(parameters.remote)).name
 
-        return TestParameterChallenge(testsName, testsCodes, data, data.selectedFile)
+        return TestParameterChallenge(oneTestName, oneTestCode, data, data.selectedFile)
     }
 
     private fun filter(

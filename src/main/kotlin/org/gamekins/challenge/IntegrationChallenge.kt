@@ -2,12 +2,12 @@ package org.gamekins.challenge
 
 import hudson.model.Run
 import hudson.model.TaskListener
+import hudson.model.User
 import org.gamekins.challenge.Challenge.ChallengeGenerationData
-import org.gamekins.file.FileDetails
 import org.gamekins.file.SourceFileDetails
 import org.gamekins.util.Constants
+import org.gamekins.util.GitUtil
 import org.gamekins.util.JacocoUtil
-import org.gamekins.util.ParameterUtil
 
 class IntegrationChallenge(data: ChallengeGenerationData)
     : CoverageChallenge(data.selectedFile as SourceFileDetails, data.parameters.workspace) {
@@ -16,6 +16,7 @@ class IntegrationChallenge(data: ChallengeGenerationData)
     private val methodName = data.method!!.methodName
     private val missedLines = data.method!!.missedLines
     private val firstLineID = data.method!!.firstLineID
+    private val user: User = data.user
 
 
     init {
@@ -95,6 +96,17 @@ class IntegrationChallenge(data: ChallengeGenerationData)
             JacocoUtil.calculateCurrentFilePath(parameters.workspace, details.jacocoCSVFile,
                 details.parameters.remote), details.parameters.branch)
 
+        val lastChangedFilesOfUser = GitUtil.getLastChangedTestsOfUser(
+            details.parameters.branch, parameters, listener, GitUtil.GameUser(user),
+            GitUtil.mapUsersToGameUsers(User.getAll())
+        )
+
+        if (lastChangedFilesOfUser.isEmpty()) return false
+
+        val mockitoWords = listOf("when", "any", "thenReturn", "verify")
+
+
+
         try {
             if (!jacocoMethodFile.exists() || !jacocoCSVFile.exists()) {
                 listener.logger.println("[Gamekins] JaCoCo method file " + jacocoMethodFile.remote
@@ -106,12 +118,30 @@ class IntegrationChallenge(data: ChallengeGenerationData)
 
             val methods = JacocoUtil.getMethodEntries(jacocoMethodFile)
             for (method in methods) {
+                val regex = Regex("""(\w+)\s*\(""")
+                val match = regex.find(methodName)
+                val methodNameRegex = match?.groups?.get(1)?.value
                 if (method.methodName == methodName) {
                     if (method.missedLines < missedLines) {
-                        super.setSolved(System.currentTimeMillis())
-                        solvedCoverage = JacocoUtil.getCoverageInPercentageFromJacoco(
-                            details.fileName, jacocoCSVFile)
-                        return true
+                        if (methodNameRegex != null) {
+                            if (lastChangedFilesOfUser.get(0).codeByTest.values.filter { methodNameRegex.trim() in it }
+                                    .isNotEmpty()) {
+                                val keyWithMethodName = lastChangedFilesOfUser.get(0).codeByTest.entries.firstOrNull {
+                                    it.value.contains(methodNameRegex)
+                                }?.key
+                                if (mockitoWords.any { word ->
+                                        lastChangedFilesOfUser.get(0).codeByTest.get(
+                                            keyWithMethodName
+                                        )?.contains(word) == false
+                                    }) {
+                                    super.setSolved(System.currentTimeMillis())
+                                    solvedCoverage = JacocoUtil.getCoverageInPercentageFromJacoco(
+                                        details.fileName, jacocoCSVFile
+                                    )
+                                    return true
+                                }
+                            }
+                        }
                     }
                     break
                 }

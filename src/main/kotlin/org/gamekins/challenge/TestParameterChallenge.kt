@@ -3,26 +3,21 @@ package org.gamekins.challenge
 import hudson.model.Run
 import hudson.model.TaskListener
 import hudson.model.User
-import org.apache.commons.text.similarity.CosineSimilarity
 import org.gamekins.file.FileDetails
 import org.gamekins.util.Constants
 import org.gamekins.util.Constants.Parameters
 import org.gamekins.util.GitUtil
-import org.gamekins.util.JUnitUtil
-import org.gamekins.util.ParameterUtil
 import org.jenkinsci.plugins.workflow.multibranch.WorkflowMultiBranchProject
 
 class TestParameterChallenge(
-    testsName: HashSet<String>,
-    testsCodes: HashMap<String, String>,
+    testsName: String,
+    testsCodes: String,
     data: Challenge.ChallengeGenerationData,
     val details: FileDetails
 ) : Challenge {
 
     private val testsName = testsName
     private val testsCodes = testsCodes
-    private val testNameToChallenge: String = ParameterUtil.getTestName(testsName).toString()
-    private val testCodeToChallenge: String = ParameterUtil.getTest(testNameToChallenge, testsCodes).toString()
     private var currentCommit: String = data.headCommitHash!!
     private var testCount: Int = data.testCount!!
     private val user: User = data.user
@@ -70,10 +65,6 @@ class TestParameterChallenge(
 
     override fun isSolved(parameters: Constants.Parameters, run: Run<*, *>, listener: TaskListener): Boolean {
         try {
-            val testCountSolved = JUnitUtil.getTestCount(parameters.workspace, run)
-            if (testCountSolved <= testCount) {
-                return false
-            }
             val lastChangedFilesOfUser = GitUtil.getLastChangedTestsOfUser(
                 currentCommit, parameters, listener, GitUtil.GameUser(user),
                 GitUtil.mapUsersToGameUsers(User.getAll())
@@ -83,14 +74,8 @@ class TestParameterChallenge(
                 val differenceString = newTestName.toList()
 
                 for (testName in differenceString) {
-                    val newTestCode = lastChangedFilesOfUser.get(0).codeByTest[testName]
-                    val similarity = CosineSimilarity()
-                    val vector1 = toVector(testCodeToChallenge)
-                    val vector2 = newTestCode?.let { toVector(it) }
-                    val score = similarity.cosineSimilarity(vector1, vector2)
-                    if (score >= 0.9) {
+                    if(testName.contains(this.testsName) && isValidTestFormat(testName)){
                         solved = System.currentTimeMillis()
-                        this.testCountSolved = testCountSolved
                         return true
                     }
                 }
@@ -117,7 +102,7 @@ class TestParameterChallenge(
     }
 
     override fun toString(): String {
-        return ("Write a test with different parameter using the test method" + " " + "<b>" + testNameToChallenge + "</b> in class <b>" + details.fileName
+        return ("Change the test " + "<b>" + testsName + "</b>" + " to use parameterized test" + " in class <b>" + details.fileName
                 + "</b> in package <b>" + details.packageName + "</b> (created for branch "
                 + details.parameters.branch + ")")
     }
@@ -126,8 +111,8 @@ class TestParameterChallenge(
         return javaClass.hashCode()
     }
 
-    fun toVector(text: String): Map<CharSequence, Int> {
-        return text.groupingBy { it.toString() }
-            .eachCount()
+    private fun isValidTestFormat(testName: String): Boolean {
+        val regex = Regex("""\{(int|String|double|boolean|char|long|float|short|byte|Integer|Long|Float|Double|Boolean|Character|Short|Byte)\}\[(\d|1\d|20)\]$""")
+        return regex.containsMatchIn(testName)
     }
 }

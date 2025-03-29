@@ -21,8 +21,13 @@ object ParameterUtil {
     @JvmStatic
     fun getTestName(testsName: HashSet<String>): String? {
 
-        return testsName.randomOrNull()
+        return testsName.filter { !isValidTestFormat(it) }.randomOrNull()
 
+    }
+
+    private fun isValidTestFormat(testName: String): Boolean {
+        val regex = Regex("""\{(int|String|double|boolean|char|long|float|short|byte|Integer|Long|Float|Double|Boolean|Character|Short|Byte)\}\[(\d|1\d|20)\]$""")
+        return regex.containsMatchIn(testName)
     }
 
     @JvmStatic

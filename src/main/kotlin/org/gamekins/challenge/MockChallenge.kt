@@ -4,12 +4,10 @@ import hudson.model.Run
 import hudson.model.TaskListener
 import hudson.model.User
 import org.gamekins.challenge.Challenge.ChallengeGenerationData
-import org.gamekins.file.FileDetails
 import org.gamekins.file.SourceFileDetails
 import org.gamekins.util.Constants
 import org.gamekins.util.GitUtil
 import org.gamekins.util.JacocoUtil
-import org.gamekins.util.ParameterUtil
 
 class MockChallenge(data: ChallengeGenerationData) :
     CoverageChallenge(data.selectedFile as SourceFileDetails, data.parameters.workspace) {
