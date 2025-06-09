@@ -130,7 +130,7 @@ object JacocoUtil {
         val elements = document.select("span.pc, span.nc")
         val exceptionElements = elements.filter { elements ->
             val text = elements.text()
-            text.contains("throw new")
+            text.contains("throw new") || text.contains("orElseThrow")
         }
         return exceptionElements.isNotEmpty()
     }
@@ -607,7 +607,7 @@ object JacocoUtil {
         val elements = document.select("span.pc, span.nc")
         val exceptionElements = elements.filter { elements ->
             val text = elements.text()
-            text.contains("throw new")
+            text.contains("throw new") || text.contains("orElseThrow")
         }
         if (exceptionElements.isNotEmpty()) {
             val randomIndex = Random.nextInt(exceptionElements.size)
