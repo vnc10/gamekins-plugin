@@ -84,12 +84,12 @@ object Constants {
                         "<plugin>\n" +
                         "   <groupId>org.pitest</groupId>\n" +
                         "   <artifactId>pitest-maven</artifactId>\n" +
-                        "   <version>1.9.10</version>\n" +
+                        "   <version>1.16.1</version>\n" +
                         "   <dependencies>\n" +
                         "       <dependency>\n" +
                         "           <groupId>org.pitest</groupId>\n" +
                         "           <artifactId>pitest-junit5-plugin</artifactId>\n" +
-                        "           <version>1.1.0</version>\n" +
+                        "           <version>1.2.3</version>\n" +
                         "       </dependency>\n" +
                         "   </dependencies>\n" +
                         "   <configuration>\n" +
