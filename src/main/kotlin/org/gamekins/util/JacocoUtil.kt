@@ -475,6 +475,7 @@ object JacocoUtil {
             }
         }
         methods.removeIf { it.methodName.startsWith("lambda$") }
+        methods.removeIf { it.methodName.contains("Service") || it.methodName.contains("Controller") }
 
         return methods
     }
