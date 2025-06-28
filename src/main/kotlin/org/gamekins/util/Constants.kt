@@ -72,11 +72,11 @@ object Constants {
      */
     object Default
     {
-        const val CURRENT_CHALLENGES = 3
+        const val CURRENT_CHALLENGES = 5
 
-        const val CURRENT_QUESTS = 1
+        const val CURRENT_QUESTS = 2
 
-        const val STORED_CHALLENGES = 2
+        const val STORED_CHALLENGES = 4
 
         const val SEARCH_COMMIT_COUNT = 50
 
