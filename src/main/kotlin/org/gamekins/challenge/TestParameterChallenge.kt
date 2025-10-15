@@ -112,7 +112,7 @@ class TestParameterChallenge(
     }
 
     private fun isValidTestFormat(testName: String): Boolean {
-        val regex = Regex("""\{(int|String|double|boolean|char|long|float|short|byte|Integer|Long|Float|Double|Boolean|Character|Short|Byte)\}\[(\d|1\d|20)\]$""")
+        val regex = Regex("""\((int|String|double|boolean|char|long|float|short|byte|Integer|Long|Float|Double|Boolean|Character|Short|Byte)\)\[(\d|1\d|20)\]$""")
         return regex.containsMatchIn(testName)
     }
 }
