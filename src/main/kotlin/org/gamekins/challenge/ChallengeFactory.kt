@@ -69,6 +69,26 @@ object ChallengeFactory {
         return weightList[Random.nextInt(weightList.size)]
     }
 
+    private fun chooseNewChallengeType(existingChallenges: Collection<Class<out Challenge>>): Class<out Challenge> {
+
+        val allChallenges = GamePublisherDescriptor.challengesNew
+
+        val availableChallenges = allChallenges.filterKeys { clazz ->
+            !existingChallenges.contains(clazz)
+        }
+        val mapToUse = availableChallenges.ifEmpty { allChallenges }
+
+        val weightList = arrayListOf<Class<out Challenge>>()
+
+        mapToUse.forEach { (clazz, weight) ->
+            repeat(weight) {
+                weightList.add(clazz)
+            }
+        }
+
+        return weightList.random()
+    }
+
     /**
      * Generates all possible challenges for a specific class in the project.
      */
@@ -165,7 +185,7 @@ object ChallengeFactory {
     @Throws(IOException::class, InterruptedException::class)
     fun generateChallenge(
         user: User, parameters: Parameters, listener: TaskListener, files: ArrayList<FileDetails>,
-        cla: FileDetails? = null
+        cla: FileDetails? = null, property: GameUserProperty, firstExecution: Boolean
     ): Challenge {
 
         val workList = ArrayList(files)
@@ -173,14 +193,22 @@ object ChallengeFactory {
         var challenge: Challenge?
         var count = 0
         do {
-            if (count == 5 || workList.isEmpty()) {
+            if (count == 8 || workList.isEmpty()) {
                 listener.logger.println("[Gamekins] No Challenge could be built")
                 //TODO: Generate TestChallenge
                 return DummyChallenge(parameters, Constants.Error.GENERATION)
             }
             count++
 
-            val challengeClass = chooseChallengeType()
+            val currentChallenges = property.getCurrentChallenges(parameters.projectName)
+                .map { it::class.java }
+
+            val challengeClass = if (firstExecution && currentChallenges.size < 4 && count < 5) {
+                chooseNewChallengeType(currentChallenges)
+            } else {
+                chooseChallengeType()
+            }
+
             val selectedFile = cla
                 ?: if (challengeClass.superclass == CoverageChallenge::class.java && challengeClass != MockChallenge::class.java && challengeClass != IntegrationChallenge::class.java && challengeClass != ExceptionCoverageChallenge::class.java) {
                     val tempList = ArrayList(workList.filterIsInstance<SourceFileDetails>())
@@ -226,7 +254,12 @@ object ChallengeFactory {
                     val tempList = ArrayList(workList.filterIsInstance<SourceFileDetails>())
                     tempList.removeIf { details: SourceFileDetails -> details.coverage == 1.0 }
                     tempList.removeIf { details: SourceFileDetails -> !details.filesExists() }
-                    tempList.removeIf { details: SourceFileDetails -> !JacocoUtil.verifyExceptionUnitTest(details, parameters.workspace) }
+                    tempList.removeIf { details: SourceFileDetails ->
+                        !JacocoUtil.verifyExceptionUnitTest(
+                            details,
+                            parameters.workspace
+                        )
+                    }
                     if (tempList.isEmpty()) {
                         challenge = null
                         continue
@@ -473,9 +506,11 @@ object ChallengeFactory {
 
             listener.logger.println("[Gamekins] Generating from files of user ${user.fullName}")
 
+            val firstExecution = property.getCurrentChallenges(parameters.projectName).isEmpty()
+
             for (i in property.getCurrentChallenges(parameters.projectName).size until maxChallenges) {
 
-                generated += generateUniqueChallenge(user, property, parameters, files, listener)
+                generated += generateUniqueChallenge(user, property, parameters, files, listener, firstExecution)
             }
         }
 
@@ -516,7 +551,7 @@ object ChallengeFactory {
      */
     private fun generateUniqueChallenge(
         user: User, property: GameUserProperty, parameters: Parameters, userFiles: ArrayList<FileDetails>,
-        listener: TaskListener
+        listener: TaskListener, firstExecution: Boolean
     ): Int {
         var generated = 0
         try {
@@ -533,7 +568,7 @@ object ChallengeFactory {
                 isChallengeUnique = true
 
                 listener.logger.println("[Gamekins] Started to generate challenge")
-                challenge = generateChallenge(user, parameters, listener, userFiles)
+                challenge = generateChallenge(user, parameters, listener, userFiles, null, property, firstExecution)
 
                 listener.logger.println("[Gamekins] Generated challenge ${challenge.toEscapedString()}")
                 if (challenge is DummyChallenge) break

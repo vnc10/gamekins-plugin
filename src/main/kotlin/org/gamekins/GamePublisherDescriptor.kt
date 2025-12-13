@@ -60,6 +60,7 @@ class GamePublisherDescriptor : BuildStepDescriptor<Publisher?>(GamePublisher::c
      */
     companion object {
         @Transient val challenges: HashMap<Class<out Challenge>, Int> = hashMapOf()
+        @Transient val challengesNew: HashMap<Class<out Challenge>, Int> = hashMapOf()
         @Transient val achievements: ArrayList<Achievement> = arrayListOf()
         @Transient val progressAchievements: ArrayList<ProgressAchievement> = arrayListOf()
         @Transient val badgeAchievements: ArrayList<BadgeAchievement> = arrayListOf()
@@ -67,6 +68,7 @@ class GamePublisherDescriptor : BuildStepDescriptor<Publisher?>(GamePublisher::c
 
     init {
         initChallengesMap()
+        initChallengesNewMap()
         initAchievementsList()
     }
 
@@ -175,6 +177,13 @@ class GamePublisherDescriptor : BuildStepDescriptor<Publisher?>(GamePublisher::c
         challenges[MockChallenge::class.java] = 4
         challenges[IntegrationChallenge::class.java] = 4
         challenges[ExceptionCoverageChallenge::class.java] = 4
+    }
+
+    private fun initChallengesNewMap() {
+        challengesNew[TestParameterChallenge::class.java] = 4
+        challengesNew[MockChallenge::class.java] = 4
+        challengesNew[IntegrationChallenge::class.java] = 4
+        challengesNew[ExceptionCoverageChallenge::class.java] = 4
     }
 
     /**

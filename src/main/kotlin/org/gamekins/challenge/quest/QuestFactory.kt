@@ -335,7 +335,7 @@ object QuestFactory {
         val steps = arrayListOf<QuestStep>()
         for (cla in selectedClasses) {
             val challenge = ChallengeFactory.generateChallenge(user, parameters, listener,
-                files, cla)
+                files, cla, property, false)
             for (step in steps) {
                 if (challenge == step.challenge) return null
             }
